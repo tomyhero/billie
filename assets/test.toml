@@ -1,0 +1,8 @@
+[receiver]
+[receiver.web]
+error    = "http://localhost:8000/error"
+success  = "http://localhost:8000/success"
+
+[notify]
+[[notify.email]]
+from = "noreplay@example.com"
