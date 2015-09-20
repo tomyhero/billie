@@ -13,3 +13,12 @@ host = "localhost"
 port = "587"
 user = ""
 password = ""
+[[notify.slack]]
+token = "example_token"
+channel = "#example_channel"
+username = "example name"
+as_user = true
+unfurl_links = true
+unfurl_media = true
+icon_url = "http://example.com/example.xxx"
+icon_emoji = ":example:"
