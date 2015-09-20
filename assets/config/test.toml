@@ -1,7 +1,17 @@
 [receiver]
 [receiver.web]
+[[receiver.web.form]]
+name     = "foo"
 error    = "http://localhost:8000/error"
 success  = "http://localhost:8000/success"
+supported_fields = "名前,趣味,ファイル,秘密書類"
+supported_file_extentions = ".pdf,.txt,.csv"
+
+[[receiver.web.form]]
+name     = "bar"
+error    = "http://localhost:8000/error"
+success  = "http://localhost:8000/success"
+supported_fields = "名前,趣味,夢"
 
 [notify]
 [[notify.email]]
