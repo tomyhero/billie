@@ -6,3 +6,10 @@ success  = "http://localhost:8000/success"
 [notify]
 [[notify.email]]
 from = "noreplay@example.com"
+to = "example@example.com"
+title = "タイトル"
+[notify.email.smtp]
+host = "localhost"
+port = "587"
+user = ""
+password = ""

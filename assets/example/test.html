@@ -1,0 +1,35 @@
+<html>
+    <head>
+        <title>テスト</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body>
+        <form method="post" enctype="multipart/form-data" action="http://localhost:8000/test/">
+            <input type="text" name="名前" />
+            <input type="text" name="趣味" />
+            <input type="text" name="趣味" />
+
+            <input type="file" name="ファイル" />
+            <input type="file" name="ファイル" />
+
+
+            <input type="submit" value="OK" />
+        </form>
+
+        <hr />
+
+        <form method="post"  action="http://localhost:8000/test/">
+            <input type="text" name="名前" />
+            <input type="text" name="趣味" />
+            <input type="text" name="趣味" />
+
+            <select name="夢">
+                <option value="悪夢">悪夢</option>
+            </select>
+
+            <input type="submit" value="OK" />
+        </form>
+
+
+    </body>
+</html>
