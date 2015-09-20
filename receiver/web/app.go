@@ -3,15 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"mime/multipart"
+	"net/http"
+	"regexp"
+
 	"github.com/BurntSushi/toml"
-	log "github.com/Sirupsen/logrus"
 	"github.com/tomyhero/billie/filter"
 	"github.com/tomyhero/billie/notify"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/web"
-	"mime/multipart"
-	"net/http"
-	"regexp"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var configDir string
@@ -80,6 +82,25 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 					To:    setting["to"].(string),
 					Title: setting["title"].(string),
 					SMTP:  setting["smtp"].(map[string]interface{}),
+				}
+				n.Notify(body, attachments)
+			}
+		}
+
+		// slack
+		slackConfig, hasSlack := notifyConfig["slack"].([]map[string]interface{})
+		if hasSlack {
+			for _, setting := range slackConfig {
+
+				n := notify.Slack{
+					Token:       setting["token"].(string),
+					Channel:     setting["channel"].(string),
+					Username:    setting["username"].(string),
+					AsUser:      setting["as_user"].(bool),
+					UnfurlLinks: setting["unfurl_links"].(bool),
+					UnfurlMedia: setting["unfurl_media"].(bool),
+					IconURL:     setting["icon_url"].(string),
+					IconEmoji:   setting["icon_emoji"].(string),
 				}
 				n.Notify(body, attachments)
 			}
