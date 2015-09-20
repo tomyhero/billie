@@ -20,6 +20,10 @@ import (
 
 var configDir string
 
+type filterFormat interface {
+	Parse(map[string]interface{}, map[string][]*multipart.FileHeader) string
+}
+
 func main() {
 
 	flag.StringVar(&configDir, "config", "./assets/config/", "Path to the config dir ")
@@ -122,7 +126,9 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	f := &filter.Text{}
+	filterName := getFilterName(config)
+	f := getFilterFormat(filterName)
+
 	body := f.Parse(fields, attachments)
 
 	notifyConfig, hasNotify := config["notify"].(map[string]interface{})
@@ -132,10 +138,11 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 			for _, setting := range emailConfig {
 
 				n := notify.Email{
-					From:  setting["from"].(string),
-					To:    setting["to"].(string),
-					Title: setting["title"].(string),
-					SMTP:  setting["smtp"].(map[string]interface{}),
+					From:        setting["from"].(string),
+					To:          setting["to"].(string),
+					Title:       setting["title"].(string),
+					ContentType: getContentType(filterName),
+					SMTP:        setting["smtp"].(map[string]interface{}),
 				}
 				n.Notify(body, attachments)
 			}
@@ -162,4 +169,41 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, formConfig["success"].(string), http.StatusFound)
+}
+
+func getFilterName(config map[string]interface{}) (filterName string) {
+	filterName = "text"
+
+	filterConfig, hasFilter := config["filter"].(map[string]interface{})
+	if hasFilter {
+		formatConfig, hasFormat := filterConfig["format"].(string)
+		if hasFormat {
+			filterName = formatConfig
+		}
+	}
+
+	return filterName
+}
+
+func getFilterFormat(filterName string) (f filterFormat) {
+	f = &filter.Text{}
+
+	switch filterName {
+	case "html":
+		f = &filter.HTML{}
+	}
+
+	return f
+}
+
+func getContentType(filterName string) (contentType string) {
+	contentType = "text/plain"
+
+	switch filterName {
+	case "html":
+		contentType = "text/html"
+	}
+
+	log.Info(contentType)
+	return contentType
 }

@@ -1,0 +1,16 @@
+<html>
+	<head>
+	</head>
+	<body>
+		<table>
+			<tbody>
+				{{range $name, $values := .fields}}
+				<tr><th>{{$name}}</th><td>{{join $values ","}}</td></tr>
+				{{end}}
+				{{range $name, $attachments := .attachment_fields}}
+				<tr><th>{{$name}}</th><td>{{attachmentJoin $attachments}}</td></tr>
+				{{end}}
+			</tbody>
+		</table>
+	</body>
+</html>
