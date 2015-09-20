@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/tomyhero/billie/filter"
@@ -23,13 +25,14 @@ func main() {
 	flag.StringVar(&configDir, "config", "./assets/config/", "Path to the config dir ")
 	flag.Parse()
 
-	goji.Post(regexp.MustCompile(`^/(?P<name>[a-zA-Z0-9_-]+)/$`), handler)
+	goji.Post(regexp.MustCompile(`^/(?P<name>[a-zA-Z0-9_-]+)/(?P<form_name>[a-zA-Z0-9_-]+)/$`), handler)
 	goji.Serve()
 }
 
 func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	name := c.URLParams["name"]
+	formName := c.URLParams["form_name"]
 
 	var config map[string]interface{}
 	if _, err := toml.DecodeFile(configDir+name+".toml", &config); err != nil {
@@ -38,7 +41,43 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseMultipartForm(1024 * 10)
+	formConfigs := config["receiver"].(map[string]interface{})["web"].(map[string]interface{})["form"].([]map[string]interface{})
+
+	var formConfig map[string]interface{}
+
+	for _, setting := range formConfigs {
+		if formName == setting["name"].(string) {
+			formConfig = map[string]interface{}{}
+			formConfig = setting
+		}
+	}
+
+	if formConfig == nil {
+		fmt.Fprintf(w, "FORM NOT FOUND")
+		return
+	}
+
+	supportedFields, hasSupportedFields := formConfig["supported_fields"].(string)
+
+	allowFields := map[string]bool{}
+	if hasSupportedFields {
+		check := strings.Split(supportedFields, ",")
+		for _, v := range check {
+			allowFields[v] = true
+		}
+	}
+
+	supportedFileExtentions, hasSupportedFileExtentions := formConfig["supported_file_extentions"].(string)
+
+	allowFileExtentions := map[string]bool{}
+	if hasSupportedFileExtentions {
+		check := strings.Split(supportedFileExtentions, ",")
+		for _, v := range check {
+			allowFileExtentions[v] = true
+		}
+	}
+
+	err := r.ParseMultipartForm(1024 * 1024)
 
 	onMultipartForm := true
 
@@ -48,23 +87,38 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 		onMultipartForm = false
 	} else if err != nil {
 		log.Error(err)
-		fmt.Fprintf(w, "SYSTEM ERROR")
+		http.Redirect(w, r, formConfig["error"].(string), http.StatusFound)
 		return
 	}
 
 	if onMultipartForm {
 		for name, f := range r.MultipartForm.File {
-			attachments[name] = f
+			tmp := []*multipart.FileHeader{}
+			for _, a := range f {
+				_, allowdExt := allowFileExtentions[filepath.Ext(a.Filename)]
+				if allowdExt {
+					tmp = append(tmp, a)
+				}
+			}
+			_, allowd := allowFields[name]
+			if allowd && len(tmp) > 0 {
+				attachments[name] = tmp
+			}
 		}
 
 		for name, v := range r.MultipartForm.Value {
-			log.Info(name, v)
-			fields[name] = v
+			_, allowd := allowFields[name]
+			if allowd {
+				fields[name] = v
+			}
 		}
 	} else {
 
 		for name, v := range r.PostForm {
-			fields[name] = v
+			_, allowd := allowFields[name]
+			if allowd {
+				fields[name] = v
+			}
 		}
 	}
 
@@ -107,5 +161,5 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Fprintf(w, body)
+	http.Redirect(w, r, formConfig["success"].(string), http.StatusFound)
 }

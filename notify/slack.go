@@ -7,8 +7,8 @@ import (
 	"mime/multipart"
 	"os"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/nlopes/slack"
-	"github.com/siddontang/go/log"
 )
 
 // Slack is setting for posting on slack.
@@ -32,7 +32,7 @@ func (s *Slack) Notify(body string, attachments map[string][]*multipart.FileHead
 		for _, attachment := range tmp {
 			fileURL, err := upSlack(api, attachment)
 			if err != nil {
-				log.Errorf("upload slack error: %v", err)
+				log.Error("upload slack error:", err)
 			} else {
 				// add url to body
 				body += fmt.Sprintln(fileURL)

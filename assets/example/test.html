@@ -4,25 +4,28 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     </head>
     <body>
-        <form method="post" enctype="multipart/form-data" action="http://localhost:8000/test/">
-            <input type="text" name="名前" />
-            <input type="text" name="趣味" />
-            <input type="text" name="趣味" />
+        <h3>Form foo</h3>
+        <form method="post" enctype="multipart/form-data" action="http://localhost:8000/test/foo/">
+            名前 : <input type="text" name="名前" /> <br />
+            趣味1 : <input type="text" name="趣味" /> <br />
+            趣味2 : <input type="text" name="趣味" /> <br />
 
-            <input type="file" name="ファイル" />
-            <input type="file" name="ファイル" />
+            これはとどかない : <input type="text" name="これはとどかない" /> <br />
 
-
+            ファイル1 : <input type="file" name="ファイル" /> <br />
+            ファイル2 : <input type="file" name="ファイル" /> <br />
+            秘密書類 : <input type="file" name="秘密書類" /> <br />
+            無理ファイル : <input type="file" name="無理ファイル" /> <br />
             <input type="submit" value="OK" />
         </form>
 
         <hr />
 
-        <form method="post"  action="http://localhost:8000/test/">
+        <h3>Form bar</h3>
+        <form method="post"  action="http://localhost:8000/test/bar/">
             <input type="text" name="名前" />
             <input type="text" name="趣味" />
             <input type="text" name="趣味" />
-
             <select name="夢">
                 <option value="悪夢">悪夢</option>
             </select>
