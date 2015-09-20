@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	log "github.com/Sirupsen/logrus"
@@ -13,7 +14,13 @@ import (
 	"regexp"
 )
 
+var configDir string
+
 func main() {
+
+	flag.StringVar(&configDir, "config", "./assets/config/", "Path to the config dir ")
+	flag.Parse()
+
 	goji.Post(regexp.MustCompile(`^/(?P<name>[a-zA-Z0-9_-]+)/$`), handler)
 	goji.Serve()
 }
@@ -23,7 +30,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 	name := c.URLParams["name"]
 
 	var config map[string]interface{}
-	if _, err := toml.DecodeFile("./assets/config/"+name+".toml", &config); err != nil {
+	if _, err := toml.DecodeFile(configDir+name+".toml", &config); err != nil {
 		log.Error(err)
 		fmt.Fprintf(w, "SYSTEM ERROR")
 		return
