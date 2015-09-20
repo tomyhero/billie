@@ -54,7 +54,7 @@ func (self *Email) Notify(body string, attachments map[string][]*multipart.FileH
 	)
 
 	//	log.Info(d)
-	//log.Info(body)
+	log.Info(body)
 
 	// Send the email to Bob, Cora and Dan.
 	if err := d.DialAndSend(m); err != nil {
