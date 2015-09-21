@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-gomail/gomail"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -13,6 +14,7 @@ import (
 type Email struct {
 	From        string
 	To          string
+	CC          string
 	Title       string
 	ContentType string
 	SMTP        map[string]interface{}
@@ -22,7 +24,13 @@ func (self *Email) Notify(body string, attachments map[string][]*multipart.FileH
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", self.From)
-	m.SetHeader("To", self.To)
+
+	m.SetHeader("To", strings.Split(self.To, ",")...)
+
+	if self.CC != "" {
+		m.SetHeader("CC", strings.Split(self.CC, ",")...)
+	}
+
 	m.SetHeader("Subject", self.Title)
 	m.SetBody(self.ContentType, body)
 

@@ -140,6 +140,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 				n := notify.Email{
 					From:        setting["from"].(string),
 					To:          setting["to"].(string),
+					CC:          setting["cc"].(string),
 					Title:       setting["title"].(string),
 					ContentType: getContentType(filterName),
 					SMTP:        setting["smtp"].(map[string]interface{}),
