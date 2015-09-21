@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-var defaultTemplate = template.Must(template.New("default.html").Funcs(template.FuncMap(fns)).ParseFiles("filter/template/default.html"))
+var defaultTemplate = template.Must(template.New("").Funcs(template.FuncMap(fns)).Parse(defaultTemplateStr))
 
 // HTML is format of filter. it converts input to html and output.
 type HTML struct {
@@ -24,3 +24,41 @@ func (h *HTML) Parse(f map[string]interface{}, a map[string][]*multipart.FileHea
 
 	return buffer.String()
 }
+
+const defaultTemplateStr = `
+<html>
+	<head>
+		<style type="text/css">
+		<!--
+		table {
+			width: 70%;
+			border-top: 1px solid #000000;
+			border-left: 1px solid #000000;
+			border-spacing: 0px;
+		}
+		table tr th, table tr td {
+			border-bottom: 1px solid #000000;
+			border-right: 1px solid #000000;
+		}
+		table tr th {
+			width: 30%;
+			background: #e0ffff;
+		}
+		table tr td {
+			width: 70%;
+		}
+		-->
+		</style>
+	</head>
+	<body>
+		<table>
+			{{range $name, $values := .fields}}
+			<tr><th>{{$name}}</th><td>{{join $values ","}}</td></tr>
+			{{end}}
+			{{range $name, $attachments := .attachment_fields}}
+			<tr><th>{{$name}}</th><td>{{attachmentJoin $attachments}}</td></tr>
+			{{end}}
+		</table>
+	</body>
+</html>
+`
