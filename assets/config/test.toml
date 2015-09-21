@@ -13,6 +13,9 @@ error    = "http://localhost:8000/error"
 success  = "http://localhost:8000/success"
 supported_fields = "名前,趣味,夢"
 
+[filter]
+format = "html"
+
 [notify]
 [[notify.email]]
 from = "noreplay@example.com"

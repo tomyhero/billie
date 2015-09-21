@@ -1,18 +1,21 @@
 package notify
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/go-gomail/gomail"
 	"io"
 	"mime/multipart"
 	"strconv"
+
+	"github.com/go-gomail/gomail"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type Email struct {
-	From  string
-	To    string
-	Title string
-	SMTP  map[string]interface{}
+	From        string
+	To          string
+	Title       string
+	ContentType string
+	SMTP        map[string]interface{}
 }
 
 func (self *Email) Notify(body string, attachments map[string][]*multipart.FileHeader) {
@@ -21,7 +24,7 @@ func (self *Email) Notify(body string, attachments map[string][]*multipart.FileH
 	m.SetHeader("From", self.From)
 	m.SetHeader("To", self.To)
 	m.SetHeader("Subject", self.Title)
-	m.SetBody("text/plain", body)
+	m.SetBody(self.ContentType, body)
 
 	for _, tmp := range attachments {
 		for _, attachment := range tmp {
