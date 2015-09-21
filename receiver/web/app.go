@@ -127,7 +127,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 	}
 
 	filterName := getFilterName(config)
-	f := getFilterFormat(filterName)
+	f := getFilterFormat(filterName, config)
 
 	body := f.Parse(fields, attachments)
 
@@ -177,21 +177,32 @@ func getFilterName(config map[string]interface{}) (filterName string) {
 
 	filterConfig, hasFilter := config["filter"].(map[string]interface{})
 	if hasFilter {
-		formatConfig, hasFormat := filterConfig["format"].(string)
+		format, hasFormat := filterConfig["format"].(string)
 		if hasFormat {
-			filterName = formatConfig
+			filterName = format
 		}
 	}
 
 	return filterName
 }
 
-func getFilterFormat(filterName string) (f filterFormat) {
+func getFilterFormat(filterName string, config map[string]interface{}) (f filterFormat) {
 	f = &filter.Text{}
 
 	switch filterName {
 	case "html":
-		f = &filter.HTML{}
+		htmlFilter := filter.HTML{}
+		filterConfig, hasFilter := config["filter"].(map[string]interface{})
+		if hasFilter {
+			htmlConfig, hasHTML := filterConfig["html"].(map[string]interface{})
+			if hasHTML {
+				template, hasTemplate := htmlConfig["template"].(string)
+				if hasTemplate {
+					htmlFilter.Template = template
+				}
+			}
+		}
+		f = &htmlFilter
 	}
 
 	return f

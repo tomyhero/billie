@@ -1,0 +1,35 @@
+<html>
+	<head>
+		<style type="text/css">
+		<!--
+		table {
+			width: 70%;
+			border-top: 1px solid #000000;
+			border-left: 1px solid #000000;
+			border-spacing: 0px;
+		}
+		table tr th, table tr td {
+			border-bottom: 1px solid #000000;
+			border-right: 1px solid #000000;
+		}
+		table tr th {
+			width: 30%;
+			background: #90ee90;
+		}
+		table tr td {
+			width: 70%;
+		}
+		-->
+		</style>
+	</head>
+	<body>
+		<table>
+			{{range $name, $values := .fields}}
+			<tr><th>{{$name}}</th><td>{{join $values ","}}</td></tr>
+			{{end}}
+			{{range $name, $attachments := .attachment_fields}}
+			<tr><th>{{$name}}</th><td>{{attachmentJoin $attachments}}</td></tr>
+			{{end}}
+		</table>
+	</body>
+</html>
