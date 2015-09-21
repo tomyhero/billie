@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"html/template"
 	"mime/multipart"
+	"os"
+	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -12,12 +14,25 @@ var defaultTemplate = template.Must(template.New("").Funcs(template.FuncMap(fns)
 
 // HTML is format of filter. it converts input to html and output.
 type HTML struct {
+	Template string
 }
 
 // Parse is converts the input data into html.
 func (h *HTML) Parse(f map[string]interface{}, a map[string][]*multipart.FileHeader) string {
+	t := defaultTemplate
+
+	if h.Template != "" {
+		// template check
+		_, err := os.Stat(h.Template)
+		if err == nil {
+			t = template.Must(template.New(filepath.Base(h.Template)).Funcs(template.FuncMap(fns)).ParseFiles(h.Template))
+		} else {
+			log.Warnf("template does not exist: %s, stat error: %v", h.Template, err)
+		}
+	}
+
 	var buffer bytes.Buffer
-	err := defaultTemplate.Execute(&buffer, map[string]interface{}{"fields": f, "attachment_fields": a})
+	err := t.Execute(&buffer, map[string]interface{}{"fields": f, "attachment_fields": a})
 	if err != nil {
 		log.Panicf("execute template error: %v", err)
 	}
