@@ -33,33 +33,34 @@ func main() {
 	goji.Serve()
 }
 
-func handler(c web.C, w http.ResponseWriter, r *http.Request) {
-
+func getConfig(c web.C) (map[string]interface{}, error) {
 	name := c.URLParams["name"]
-	formName := c.URLParams["form_name"]
-
 	var config map[string]interface{}
 	if _, err := toml.DecodeFile(configDir+name+".toml", &config); err != nil {
-		log.Error(err)
-		fmt.Fprintf(w, "SYSTEM ERROR")
-		return
+		return nil, err
+	}
+	return config, nil
+}
+
+func getFormConfig(c web.C, config map[string]interface{}) (map[string]interface{}, error) {
+	formName := c.URLParams["form_name"]
+
+	formConfigs, hasFormConfigs := config["receiver"].(map[string]interface{})["web"].(map[string]interface{})["form"].(map[string]interface{})
+
+	if !hasFormConfigs {
+		return nil, fmt.Errorf("Can not found form config")
 	}
 
-	formConfigs := config["receiver"].(map[string]interface{})["web"].(map[string]interface{})["form"].([]map[string]interface{})
+	formConfig, hasFormConfig := formConfigs[formName].(map[string]interface{})
 
-	var formConfig map[string]interface{}
-
-	for _, setting := range formConfigs {
-		if formName == setting["name"].(string) {
-			formConfig = map[string]interface{}{}
-			formConfig = setting
-		}
+	if !hasFormConfig {
+		return nil, fmt.Errorf("can not found form")
 	}
 
-	if formConfig == nil {
-		fmt.Fprintf(w, "FORM NOT FOUND")
-		return
-	}
+	return formConfig, nil
+}
+
+func getAllowSettings(formConfig map[string]interface{}) (map[string]bool, map[string]bool) {
 
 	supportedFields, hasSupportedFields := formConfig["supported_fields"].(string)
 
@@ -81,18 +82,128 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	return allowFields, allowFileExtentions
+}
+
+func handler(c web.C, w http.ResponseWriter, r *http.Request) {
+
+	config, err := getConfig(c)
+
+	if err != nil {
+		log.Error(err)
+		fmt.Fprintf(w, "SYSTEM ERROR")
+		return
+	}
+
+	formConfig, err := getFormConfig(c, config)
+
+	if err != nil {
+		log.Error(err)
+		fmt.Fprintf(w, "SYSTEM ERROR")
+		return
+	}
+
+	allowFields, allowFileExtentions := getAllowSettings(formConfig)
+	fields, attachments, err := getData(r, allowFields, allowFileExtentions)
+
+	if err != nil {
+		log.Error(err)
+		http.Redirect(w, r, formConfig["error"].(string), http.StatusFound)
+		return
+	}
+
+	notifyList, hasNotifies := formConfig["notifies"].(string)
+
+	if hasNotifies {
+		for _, part := range strings.Split(notifyList, ",") {
+			p := strings.Split(part, ".")
+			notifyType := p[0]
+			notifyName := p[1]
+			setting, hasSetting := config["notify"].(map[string]interface{})[notifyType].(map[string]interface{})[notifyName].(map[string]interface{})
+
+			if !hasSetting {
+				log.Error("Can not found notify Data:", part)
+				fmt.Fprintf(w, "SYSTEM ERROR")
+				return
+			}
+
+			filterConfig, hasFilterConfig := config["filter"].(map[string]interface{})[setting["filter"].(string)].(map[string]interface{})
+
+			if !hasFilterConfig {
+				log.Error("Can not find filter:", setting["filter"].(string))
+				fmt.Fprintf(w, "SYSTEM ERROR")
+				return
+			}
+
+			filterFormat, hasFormat := filterConfig["format"].(string)
+
+			if !hasFormat {
+				log.Error("format is empty", setting["filter"].(string))
+				fmt.Fprintf(w, "SYSTEM ERROR")
+				return
+			}
+			// TODO filter
+
+			f := getFilterFormat(filterFormat, config)
+			body := f.Parse(fields, attachments)
+
+			n := createNotifyObject(notifyType, filterFormat, formConfig["title"].(string), setting)
+			n.Notify(body, attachments)
+
+		}
+
+	}
+
+	http.Redirect(w, r, formConfig["success"].(string), http.StatusFound)
+}
+
+type NotifyExecutor interface {
+	Notify(string, map[string][]*multipart.FileHeader)
+}
+
+func createNotifyObject(notifyType string, filterFormat string, title string, setting map[string]interface{}) NotifyExecutor {
+
+	var n NotifyExecutor
+
+	if notifyType == "email" {
+
+		n = &notify.Email{
+			From:        setting["from"].(string),
+			To:          setting["to"].(string),
+			CC:          setting["cc"].(string),
+			Title:       title,
+			ContentType: getContentType(filterFormat),
+			SMTP:        setting["smtp"].(map[string]interface{}),
+		}
+	} else {
+
+		n = &notify.Slack{
+			Token:       setting["token"].(string),
+			Channel:     setting["channel"].(string),
+			Username:    setting["username"].(string),
+			AsUser:      setting["as_user"].(bool),
+			UnfurlLinks: setting["unfurl_links"].(bool),
+			UnfurlMedia: setting["unfurl_media"].(bool),
+			IconURL:     setting["icon_url"].(string),
+			IconEmoji:   setting["icon_emoji"].(string),
+		}
+	}
+	return n
+}
+
+func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions map[string]bool) (map[string]interface{}, map[string][]*multipart.FileHeader, error) {
+
+	fields := map[string]interface{}{}
+	attachments := map[string][]*multipart.FileHeader{}
+
 	err := r.ParseMultipartForm(1024 * 1024)
 
 	onMultipartForm := true
 
-	fields := map[string]interface{}{}
-	attachments := map[string][]*multipart.FileHeader{}
 	if err == http.ErrNotMultipart {
 		onMultipartForm = false
 	} else if err != nil {
-		log.Error(err)
-		http.Redirect(w, r, formConfig["error"].(string), http.StatusFound)
-		return
+		return nil, nil, err
 	}
 
 	if onMultipartForm {
@@ -126,50 +237,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	filterName := getFilterName(config)
-	f := getFilterFormat(filterName, config)
-
-	body := f.Parse(fields, attachments)
-
-	notifyConfig, hasNotify := config["notify"].(map[string]interface{})
-	if hasNotify {
-		emailConfig, hasEmail := notifyConfig["email"].([]map[string]interface{})
-		if hasEmail {
-			for _, setting := range emailConfig {
-
-				n := notify.Email{
-					From:        setting["from"].(string),
-					To:          setting["to"].(string),
-					CC:          setting["cc"].(string),
-					Title:       setting["title"].(string),
-					ContentType: getContentType(filterName),
-					SMTP:        setting["smtp"].(map[string]interface{}),
-				}
-				n.Notify(body, attachments)
-			}
-		}
-
-		// slack
-		slackConfig, hasSlack := notifyConfig["slack"].([]map[string]interface{})
-		if hasSlack {
-			for _, setting := range slackConfig {
-
-				n := notify.Slack{
-					Token:       setting["token"].(string),
-					Channel:     setting["channel"].(string),
-					Username:    setting["username"].(string),
-					AsUser:      setting["as_user"].(bool),
-					UnfurlLinks: setting["unfurl_links"].(bool),
-					UnfurlMedia: setting["unfurl_media"].(bool),
-					IconURL:     setting["icon_url"].(string),
-					IconEmoji:   setting["icon_emoji"].(string),
-				}
-				n.Notify(body, attachments)
-			}
-		}
-	}
-
-	http.Redirect(w, r, formConfig["success"].(string), http.StatusFound)
+	return fields, attachments, nil
 }
 
 func getFilterName(config map[string]interface{}) (filterName string) {

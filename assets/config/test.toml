@@ -1,35 +1,40 @@
 [receiver]
 [receiver.web]
-[[receiver.web.form]]
-name     = "foo"
-error    = "http://localhost:8000/error"
-success  = "http://localhost:8000/success"
+[receiver.web.form.foo]
+error = "http://localhost:8000/error"
+success = "http://localhost:8000/success"
 supported_fields = "名前,趣味,ファイル,秘密書類"
 supported_file_extentions = ".pdf,.txt,.csv"
+notify="email.bar"
+title = "自己紹介フォーム"
 
-[[receiver.web.form]]
-name     = "bar"
-error    = "http://localhost:8000/error"
-success  = "http://localhost:8000/success"
+[receiver.web.form.bar]
+error = "http://localhost:8000/error"
+success = "http://localhost:8000/success"
 supported_fields = "名前,趣味,夢"
+notify="email.bar,slack.bar"
+title = "夢ふぉーむ"
 
 [filter]
+[filter.bar]
 format = "html"
-[filter.html]
-template = "assets/config/template/example.html"
+template = "/foo/bar.tmpl"
+[filter.foo]
+format = "text"
 
 [notify]
-[[notify.email]]
+[notify.email.bar]
 from = "noreplay@example.com"
 to = "example@example.com"
 cc = "example@example.com,example2@example.com"
-title = "タイトル"
-[notify.email.smtp]
+filter = "bar"
+[notify.email.bar.smtp]
 host = "localhost"
 port = "587"
 user = ""
 password = ""
-[[notify.slack]]
+
+[notify.slack.bar]
 token = "example_token"
 channel = "#example_channel"
 username = "example name"
@@ -38,3 +43,4 @@ unfurl_links = true
 unfurl_media = true
 icon_url = "http://example.com/example.xxx"
 icon_emoji = ":example:"
+filter = "foo"
