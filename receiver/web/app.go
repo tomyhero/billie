@@ -18,19 +18,100 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+// configDir where the config file directory is.
 var configDir string
 
-type filterFormat interface {
-	Parse(map[string]interface{}, map[string][]*multipart.FileHeader) string
+func init() {
+	// initialize values from flag
+	flag.StringVar(&configDir, "config", "./assets/config/", "Path to the config dir ")
+	flag.Parse()
 }
 
 func main() {
-
-	flag.StringVar(&configDir, "config", "./assets/config/", "Path to the config dir ")
-	flag.Parse()
-
+	// start server!
 	goji.Post(regexp.MustCompile(`^/(?P<name>[a-zA-Z0-9_-]+)/(?P<form_name>[a-zA-Z0-9_-]+)/$`), handler)
 	goji.Serve()
+}
+
+func handler(c web.C, w http.ResponseWriter, r *http.Request) {
+
+	config, err := getConfig(c)
+
+	// fail to get config
+	if err != nil {
+		log.Error("fail to get config:", err)
+		fmt.Fprintf(w, "SYSTEM ERROR")
+		return
+	}
+
+	formConfig, err := getFormConfig(c, config)
+
+	// fail to get form
+	if err != nil {
+		log.Error("fail to get form:", err)
+		fmt.Fprintf(w, "SYSTEM ERROR")
+		return
+	}
+
+	// getting fields and attachments data.
+
+	allowFields, allowFileExtentions := getAllowSettings(formConfig)
+	fields, attachments, err := getData(r, allowFields, allowFileExtentions)
+
+	// failt to getting data
+	if err != nil {
+		log.Error(err)
+		http.Redirect(w, r, formConfig["error"].(string), http.StatusFound)
+		return
+	}
+
+	// get notify setting
+	notifyList, hasNotifies := formConfig["notifies"].(string)
+
+	if hasNotifies {
+		for _, part := range strings.Split(notifyList, ",") {
+			p := strings.Split(part, ".")
+			notifyType := p[0]
+			notifyName := p[1]
+
+			// get notify setting
+			setting, hasSetting := config["notify"].(map[string]interface{})[notifyType].(map[string]interface{})[notifyName].(map[string]interface{})
+
+			if !hasSetting {
+				log.Error("Can not found notify Data:", part)
+				fmt.Fprintf(w, "SYSTEM ERROR")
+				return
+			}
+
+			// get filter setting
+			filterConfig, hasFilterConfig := config["filter"].(map[string]interface{})[setting["filter"].(string)].(map[string]interface{})
+
+			if !hasFilterConfig {
+				log.Error("Can not find filter:", setting["filter"].(string))
+				fmt.Fprintf(w, "SYSTEM ERROR")
+				return
+			}
+
+			filterFormat, hasFormat := filterConfig["format"].(string)
+
+			if !hasFormat {
+				log.Error("format is empty", setting["filter"].(string))
+				fmt.Fprintf(w, "SYSTEM ERROR")
+				return
+			}
+
+			//  ok to get data!
+			f := getFilterFormat(filterFormat, config)
+			body := f.Parse(fields, attachments)
+
+			// notify!
+			n := createNotifyObject(notifyType, filterFormat, formConfig["title"].(string), setting)
+			n.Notify(body, attachments)
+		}
+	}
+
+	// everything fine!
+	http.Redirect(w, r, formConfig["success"].(string), http.StatusFound)
 }
 
 func getConfig(c web.C) (map[string]interface{}, error) {
@@ -85,85 +166,9 @@ func getAllowSettings(formConfig map[string]interface{}) (map[string]bool, map[s
 	return allowFields, allowFileExtentions
 }
 
-func handler(c web.C, w http.ResponseWriter, r *http.Request) {
+func createNotifyObject(notifyType string, filterFormat string, title string, setting map[string]interface{}) notify.NotifyExecutor {
 
-	config, err := getConfig(c)
-
-	if err != nil {
-		log.Error(err)
-		fmt.Fprintf(w, "SYSTEM ERROR")
-		return
-	}
-
-	formConfig, err := getFormConfig(c, config)
-
-	if err != nil {
-		log.Error(err)
-		fmt.Fprintf(w, "SYSTEM ERROR")
-		return
-	}
-
-	allowFields, allowFileExtentions := getAllowSettings(formConfig)
-	fields, attachments, err := getData(r, allowFields, allowFileExtentions)
-
-	if err != nil {
-		log.Error(err)
-		http.Redirect(w, r, formConfig["error"].(string), http.StatusFound)
-		return
-	}
-
-	notifyList, hasNotifies := formConfig["notifies"].(string)
-
-	if hasNotifies {
-		for _, part := range strings.Split(notifyList, ",") {
-			p := strings.Split(part, ".")
-			notifyType := p[0]
-			notifyName := p[1]
-			setting, hasSetting := config["notify"].(map[string]interface{})[notifyType].(map[string]interface{})[notifyName].(map[string]interface{})
-
-			if !hasSetting {
-				log.Error("Can not found notify Data:", part)
-				fmt.Fprintf(w, "SYSTEM ERROR")
-				return
-			}
-
-			filterConfig, hasFilterConfig := config["filter"].(map[string]interface{})[setting["filter"].(string)].(map[string]interface{})
-
-			if !hasFilterConfig {
-				log.Error("Can not find filter:", setting["filter"].(string))
-				fmt.Fprintf(w, "SYSTEM ERROR")
-				return
-			}
-
-			filterFormat, hasFormat := filterConfig["format"].(string)
-
-			if !hasFormat {
-				log.Error("format is empty", setting["filter"].(string))
-				fmt.Fprintf(w, "SYSTEM ERROR")
-				return
-			}
-			// TODO filter
-
-			f := getFilterFormat(filterFormat, config)
-			body := f.Parse(fields, attachments)
-
-			n := createNotifyObject(notifyType, filterFormat, formConfig["title"].(string), setting)
-			n.Notify(body, attachments)
-
-		}
-
-	}
-
-	http.Redirect(w, r, formConfig["success"].(string), http.StatusFound)
-}
-
-type NotifyExecutor interface {
-	Notify(string, map[string][]*multipart.FileHeader)
-}
-
-func createNotifyObject(notifyType string, filterFormat string, title string, setting map[string]interface{}) NotifyExecutor {
-
-	var n NotifyExecutor
+	var n notify.NotifyExecutor
 
 	if notifyType == "email" {
 
@@ -254,7 +259,7 @@ func getFilterName(config map[string]interface{}) (filterName string) {
 	return filterName
 }
 
-func getFilterFormat(filterName string, config map[string]interface{}) (f filterFormat) {
+func getFilterFormat(filterName string, config map[string]interface{}) (f filter.FilterExecutor) {
 	f = &filter.Text{}
 
 	switch filterName {
