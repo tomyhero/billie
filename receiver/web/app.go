@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/tomyhero/billie/filter"
@@ -30,7 +33,25 @@ func init() {
 func main() {
 	// start server!
 	goji.Post(regexp.MustCompile(`^/(?P<name>[a-zA-Z0-9_-]+)/(?P<form_name>[a-zA-Z0-9_-]+)/$`), handler)
+	goji.Get("/__status/", status)
 	goji.Serve()
+}
+
+func status(c web.C, w http.ResponseWriter, r *http.Request) {
+
+	mem := &runtime.MemStats{}
+	runtime.ReadMemStats(mem)
+	memMb := float64((float64(mem.Alloc) / 1000) / 1000)
+	hostname, _ := os.Hostname()
+	unixtime := time.Now().Unix()
+
+	line := []string{}
+	line = append(line, fmt.Sprintf("%s.%s %d %d", hostname, "golang.num_goroutine", runtime.NumGoroutine(), unixtime))
+	line = append(line, fmt.Sprintf("%s.%s %f %d", hostname, "golang.memory", memMb, unixtime))
+
+	body := strings.Join(line, "\n")
+
+	fmt.Fprintf(w, body)
 }
 
 func handler(c web.C, w http.ResponseWriter, r *http.Request) {
