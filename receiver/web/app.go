@@ -42,12 +42,11 @@ func status(c web.C, w http.ResponseWriter, r *http.Request) {
 	mem := &runtime.MemStats{}
 	runtime.ReadMemStats(mem)
 	memMb := float64((float64(mem.Alloc) / 1000) / 1000)
-	hostname, _ := os.Hostname()
 	unixtime := time.Now().Unix()
 
 	line := []string{}
-	line = append(line, fmt.Sprintf("%s.%s %d %d", hostname, "golang.num_goroutine", runtime.NumGoroutine(), unixtime))
-	line = append(line, fmt.Sprintf("%s.%s %f %d", hostname, "golang.memory", memMb, unixtime))
+	line = append(line, fmt.Sprintf("%s %d %d", "num_goroutine", runtime.NumGoroutine(), unixtime))
+	line = append(line, fmt.Sprintf("%s %f %d", "memory", memMb, unixtime))
 
 	body := strings.Join(line, "\n")
 
