@@ -3,6 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/BurntSushi/toml"
+	log "github.com/Sirupsen/logrus"
+	"github.com/tomyhero/billie/filter"
+	"github.com/tomyhero/billie/notify"
+	"github.com/zenazn/goji"
+	"github.com/zenazn/goji/web"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -10,20 +16,17 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/BurntSushi/toml"
-	"github.com/tomyhero/billie/filter"
-	"github.com/tomyhero/billie/notify"
-	"github.com/zenazn/goji"
-	"github.com/zenazn/goji/web"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // configDir where the config file directory is.
 var configDir string
 
 func init() {
+
+	log.AddHook(&SourceFileHook{LogLevel: log.InfoLevel})
+	log.AddHook(&SourceFileHook{LogLevel: log.WarnLevel})
+	log.AddHook(&SourceFileHook{LogLevel: log.ErrorLevel})
+	log.AddHook(&SourceFileHook{LogLevel: log.PanicLevel})
 	// initialize values from flag
 	flag.StringVar(&configDir, "config", "./assets/config/", "Path to the config dir ")
 	flag.Parse()
@@ -49,6 +52,8 @@ func status(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	body := strings.Join(line, "\n")
 
+	log.WithFields(log.Fields{"body": body}).Info("Status Info")
+
 	fmt.Fprintf(w, body)
 }
 
@@ -58,7 +63,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	// fail to get config
 	if err != nil {
-		log.Error("fail to get config:", err)
+		log.WithFields(log.Fields{"err": err}).Error("Fail to get config")
 		fmt.Fprintf(w, "SYSTEM ERROR")
 		return
 	}
@@ -67,7 +72,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	// fail to get form
 	if err != nil {
-		log.Error("fail to get form:", err)
+		log.WithFields(log.Fields{"err": err}).Error("Fail to get form")
 		fmt.Fprintf(w, "SYSTEM ERROR")
 		return
 	}
@@ -79,7 +84,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	// failt to getting data
 	if err != nil {
-		log.Error(err)
+		log.WithFields(log.Fields{"err": err}).Error("Fail to getData")
 		http.Redirect(w, r, formConfig["error"].(string), http.StatusFound)
 		return
 	}
@@ -97,7 +102,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 			setting, hasSetting := config["notify"].(map[string]interface{})[notifyType].(map[string]interface{})[notifyName].(map[string]interface{})
 
 			if !hasSetting {
-				log.Error("Can not found notify Data:", part)
+				log.WithFields(log.Fields{"part": part}).Error("Can not found notify data")
 				fmt.Fprintf(w, "SYSTEM ERROR")
 				return
 			}
@@ -106,7 +111,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 			filterConfig, hasFilterConfig := config["filter"].(map[string]interface{})[setting["filter"].(string)].(map[string]interface{})
 
 			if !hasFilterConfig {
-				log.Error("Can not find filter:", setting["filter"].(string))
+				log.WithFields(log.Fields{"part": part}).Error("Can not find filter")
 				fmt.Fprintf(w, "SYSTEM ERROR")
 				return
 			}
@@ -114,7 +119,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 			filterFormat, hasFormat := filterConfig["format"].(string)
 
 			if !hasFormat {
-				log.Error("format is empty", setting["filter"].(string))
+				log.WithFields(log.Fields{"setting": setting, "part": part}).Error("Format is empty")
 				fmt.Fprintf(w, "SYSTEM ERROR")
 				return
 			}
@@ -125,6 +130,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 			// notify!
 			n := createNotifyObject(notifyType, filterFormat, formConfig["title"].(string), setting)
+			log.WithFields(log.Fields{"notifyType": notifyType, "body": body}).Info("Start Notify")
 			n.Notify(body, attachments)
 		}
 	}
@@ -307,7 +313,38 @@ func getContentType(filterName string) (contentType string) {
 	case "html":
 		contentType = "text/html"
 	}
-
-	log.Info(contentType)
 	return contentType
+}
+
+// copy from here
+// https://github.com/flowhealth/logrus/blob/master/hooks/sourcefile/sourcefile.go
+
+type SourceFileHook struct {
+	LogLevel log.Level
+}
+
+func (hook *SourceFileHook) Fire(entry *log.Entry) (_ error) {
+	for skip := 4; skip < 9; skip++ {
+		_, file, line, _ := runtime.Caller(skip)
+		split := strings.Split(file, "/")
+		if l := len(split); l > 1 {
+			pkg := split[l-2]
+			if pkg != "logrus" {
+				file = fmt.Sprintf("%s/%s:%d", split[l-2], split[l-1], line)
+				// set source_file field
+				entry.Data["source_file"] = file
+				return
+			}
+		}
+	}
+
+	return
+}
+
+func (hook *SourceFileHook) Levels() []log.Level {
+	levels := make([]log.Level, hook.LogLevel+1)
+	for i, _ := range levels {
+		levels[i] = log.Level(i)
+	}
+	return levels
 }

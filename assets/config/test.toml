@@ -5,14 +5,14 @@ error = "http://localhost:8000/error"
 success = "http://localhost:8000/success"
 supported_fields = "名前,趣味,ファイル,秘密書類"
 supported_file_extentions = ".pdf,.txt,.csv"
-notify="email.bar"
+notifiers="email.bar"
 title = "自己紹介フォーム"
 
 [receiver.web.form.bar]
 error = "http://localhost:8000/error"
 success = "http://localhost:8000/success"
 supported_fields = "名前,趣味,夢"
-notify="email.bar,slack.bar"
+notifiers="email.bar,slack.bar"
 title = "夢ふぉーむ"
 
 [filter]

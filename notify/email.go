@@ -64,9 +64,6 @@ func (self *Email) Notify(body string, attachments map[string][]*multipart.FileH
 		self.SMTP["password"].(string),
 	)
 
-	//	log.Info(d)
-	log.Info(body)
-
 	// Send the email to Bob, Cora and Dan.
 	if err := d.DialAndSend(m); err != nil {
 		log.Panic(err)
