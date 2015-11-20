@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"time"
+	//"time"
 )
 
 // configDir where the config file directory is.
@@ -44,11 +44,13 @@ func status(c web.C, w http.ResponseWriter, r *http.Request) {
 	mem := &runtime.MemStats{}
 	runtime.ReadMemStats(mem)
 	memMb := float64((float64(mem.Alloc) / 1000) / 1000)
-	unixtime := time.Now().Unix()
+	//unixtime := time.Now().Unix()
 
 	line := []string{}
-	line = append(line, fmt.Sprintf("%s %d %d", "num_goroutine", runtime.NumGoroutine(), unixtime))
-	line = append(line, fmt.Sprintf("%s %f %d", "memory", memMb, unixtime))
+	//line = append(line, fmt.Sprintf("%s %d %d", "num_goroutine", runtime.NumGoroutine(), unixtime))
+	//line = append(line, fmt.Sprintf("%s %f %d", "memory", memMb, unixtime))
+	line = append(line, fmt.Sprintf("%s %d", "num_goroutine", runtime.NumGoroutine()))
+	line = append(line, fmt.Sprintf("%s %f", "memory", memMb))
 
 	body := strings.Join(line, "\n")
 
