@@ -49,7 +49,7 @@ func status(c web.C, w http.ResponseWriter, r *http.Request) {
 	//line = append(line, fmt.Sprintf("%s %d %d", "num_goroutine", runtime.NumGoroutine(), unixtime))
 	//line = append(line, fmt.Sprintf("%s %f %d", "memory", memMb, unixtime))
 	line = append(line, fmt.Sprintf("%s %d", "num_goroutine", runtime.NumGoroutine()))
-	line = append(line, fmt.Sprintf("%s %f", "memory", mem.Alloc))
+	line = append(line, fmt.Sprintf("%s %d", "memory", mem.Alloc))
 
 	body := strings.Join(line, "\n")
 
