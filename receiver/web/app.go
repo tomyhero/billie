@@ -35,7 +35,7 @@ func init() {
 func main() {
 	// start server!
 	goji.Post(regexp.MustCompile(`^/(?P<name>[a-zA-Z0-9_-]+)/(?P<form_name>[a-zA-Z0-9_-]+)/$`), handler)
-	goji.Get("/__status/", status)
+	goji.Get("/__status", status)
 	goji.Serve()
 }
 
