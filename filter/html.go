@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"html/template"
 	//"mime/multipart"
+	. "github.com/tomyhero/billie/core"
 	"os"
 	"path/filepath"
 
@@ -18,7 +19,7 @@ type HTML struct {
 }
 
 // Parse is converts the input data into html.
-func (h *HTML) Parse(f []map[string]interface{}) string {
+func (h *HTML) Parse(f []Field) string {
 	t := defaultTemplate
 
 	if h.Template != "" {
@@ -67,8 +68,8 @@ const defaultTemplateStr = `
 	</head>
 	<body>
 		<table>
-			{{range $x, $values := .fields}}
-			<tr><th>{{$values.name }}</th><td>{{ if eq $values.type 1 }}{{join $values.value ","}}{{ else }}{{ attachmentJoin $values.value }}{{ end }}</td></tr>
+			{{range $x, $field := .fields}}
+            <tr><th>{{$field.Name }}</th><td>{{ if $field.IsTextType }}{{join $field.Values ","}}{{ else }}{{ attachmentJoin $field.Attachments }}{{ end }}</td></tr>
 			{{end}}
 		</table>
 	</body>

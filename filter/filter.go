@@ -1,9 +1,9 @@
 package filter
 
 import (
-//"mime/multipart"
+	. "github.com/tomyhero/billie/core"
 )
 
 type FilterExecutor interface {
-	Parse([]map[string]interface{}) string
+	Parse([]Field) string
 }

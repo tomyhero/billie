@@ -2,13 +2,14 @@ package filter
 
 import (
 	"bytes"
+	. "github.com/tomyhero/billie/core"
 	"mime/multipart"
 	"strings"
 	"text/template"
 )
 
-const defaultTemplates = `{{range $x , $values := .fields}}
-{{$values.name }} : {{ if eq $values.type 1 }}{{join $values.value ","}}{{ else }}{{ attachmentJoin $values.value }}{{ end }}
+const defaultTemplates = `{{range $x , $field := .fields}}
+{{$field.Name }} : {{ if $field.IsTextType }}{{join $field.Values ","}}{{ else }}{{ attachmentJoin $field.Attachments }}{{ end }}
 {{end}}
 `
 
@@ -27,7 +28,7 @@ var fns = template.FuncMap{
 type Text struct {
 }
 
-func (self *Text) Parse(fields []map[string]interface{}) string {
+func (self *Text) Parse(fields []Field) string {
 
 	t, err := template.New("TextTemplate").Funcs(fns).Parse(defaultTemplates)
 	if err != nil {

@@ -20,7 +20,7 @@ type Email struct {
 	SMTP        map[string]interface{}
 }
 
-func (self *Email) Notify(body string, attachments map[string][]*multipart.FileHeader) {
+func (self *Email) Notify(body string, attachments [][]*multipart.FileHeader) {
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", self.From)
