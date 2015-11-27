@@ -1,9 +1,9 @@
 package filter
 
 import (
-	"mime/multipart"
+//"mime/multipart"
 )
 
 type FilterExecutor interface {
-	Parse(map[string]interface{}, map[string][]*multipart.FileHeader) string
+	Parse([]map[string]interface{}, []map[string]interface{}) string
 }

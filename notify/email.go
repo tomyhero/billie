@@ -20,7 +20,7 @@ type Email struct {
 	SMTP        map[string]interface{}
 }
 
-func (self *Email) Notify(body string, attachments map[string][]*multipart.FileHeader) {
+func (self *Email) Notify(body string, attachments []map[string]interface{}) {
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", self.From)
@@ -35,7 +35,7 @@ func (self *Email) Notify(body string, attachments map[string][]*multipart.FileH
 	m.SetBody(self.ContentType, body)
 
 	for _, tmp := range attachments {
-		for _, attachment := range tmp {
+		for _, attachment := range tmp["value"].([]*multipart.FileHeader) {
 			f, err := attachment.Open()
 			if err != nil {
 				log.Panic(err)

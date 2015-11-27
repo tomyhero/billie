@@ -7,10 +7,10 @@ import (
 	"text/template"
 )
 
-const defaultTemplates = `{{range $name , $values := .fields}}
-{{$name}} : {{join $values ","}}{{end}}
-{{range $name , $attachments := .attachment_fields}}
-{{$name}}:{{ attachmentJoin $attachments }}{{end}}
+const defaultTemplates = `{{range $x , $values := .fields}}
+{{$values.name }} : {{join $values.value ","}}{{end}}
+{{range $x , $attachments := .attachment_fields}}
+{{$attachments.name }}:{{ attachmentJoin $attachments.value }}{{end}}
 `
 
 var fns = template.FuncMap{
@@ -28,7 +28,7 @@ var fns = template.FuncMap{
 type Text struct {
 }
 
-func (self *Text) Parse(d map[string]interface{}, a map[string][]*multipart.FileHeader) string {
+func (self *Text) Parse(fields []map[string]interface{}, attachmentFields []map[string]interface{}) string {
 
 	t, err := template.New("TextTemplate").Funcs(fns).Parse(defaultTemplates)
 	if err != nil {
@@ -36,7 +36,7 @@ func (self *Text) Parse(d map[string]interface{}, a map[string][]*multipart.File
 	}
 
 	var buffer bytes.Buffer
-	err = t.ExecuteTemplate(&buffer, "TextTemplate", map[string]interface{}{"fields": d, "attachment_fields": a})
+	err = t.ExecuteTemplate(&buffer, "TextTemplate", map[string]interface{}{"fields": fields, "attachment_fields": attachmentFields})
 	if err != nil {
 		panic(err)
 	}
