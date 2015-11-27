@@ -3,7 +3,7 @@ package filter
 import (
 	"bytes"
 	"html/template"
-	"mime/multipart"
+	//"mime/multipart"
 	"os"
 	"path/filepath"
 
@@ -18,7 +18,7 @@ type HTML struct {
 }
 
 // Parse is converts the input data into html.
-func (h *HTML) Parse(f map[string]interface{}, a map[string][]*multipart.FileHeader) string {
+func (h *HTML) Parse(f []map[string]interface{}, a []map[string]interface{}) string {
 	t := defaultTemplate
 
 	if h.Template != "" {
@@ -67,11 +67,11 @@ const defaultTemplateStr = `
 	</head>
 	<body>
 		<table>
-			{{range $name, $values := .fields}}
-			<tr><th>{{$name}}</th><td>{{join $values ","}}</td></tr>
+			{{range $x, $values := .fields}}
+			<tr><th>{{$values.name }}</th><td>{{join $values.value ","}}</td></tr>
 			{{end}}
-			{{range $name, $attachments := .attachment_fields}}
-			<tr><th>{{$name}}</th><td>{{attachmentJoin $attachments}}</td></tr>
+			{{range  $x , $attachments := .attachment_fields}}
+			<tr><th>{{$attachments.name }}</th><td>{{attachmentJoin $attachments.value }}</td></tr>
 			{{end}}
 		</table>
 	</body>

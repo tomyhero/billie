@@ -46,8 +46,6 @@ func status(c web.C, w http.ResponseWriter, r *http.Request) {
 	//unixtime := time.Now().Unix()
 
 	line := []string{}
-	//line = append(line, fmt.Sprintf("%s %d %d", "num_goroutine", runtime.NumGoroutine(), unixtime))
-	//line = append(line, fmt.Sprintf("%s %f %d", "memory", memMb, unixtime))
 	line = append(line, fmt.Sprintf("%s %d", "num_goroutine", runtime.NumGoroutine()))
 	line = append(line, fmt.Sprintf("%s %d", "memory", mem.Alloc))
 
@@ -222,10 +220,11 @@ func createNotifyObject(notifyType string, filterFormat string, title string, se
 	return n
 }
 
-func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions map[string]bool) (map[string]interface{}, map[string][]*multipart.FileHeader, error) {
+func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions map[string]bool) ([]map[string]interface{}, []map[string]interface{}, error) {
 
-	fields := map[string]interface{}{}
-	attachments := map[string][]*multipart.FileHeader{}
+	fields := []map[string]interface{}{}
+	attachments := []map[string]interface{}{}
+	//[]*multipart.FileHeader{}
 
 	err := r.ParseMultipartForm(1024 * 1024)
 
@@ -248,14 +247,14 @@ func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions m
 			}
 			_, allowd := allowFields[name]
 			if allowd && len(tmp) > 0 {
-				attachments[name] = tmp
+				attachments = append(attachments, map[string]interface{}{"name": name, "value": tmp})
 			}
 		}
 
 		for name, v := range r.MultipartForm.Value {
 			_, allowd := allowFields[name]
 			if allowd {
-				fields[name] = v
+				fields = append(fields, map[string]interface{}{"name": name, "value": v})
 			}
 		}
 	} else {
@@ -263,7 +262,7 @@ func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions m
 		for name, v := range r.PostForm {
 			_, allowd := allowFields[name]
 			if allowd {
-				fields[name] = v
+				fields = append(fields, map[string]interface{}{"name": name, "value": v})
 			}
 		}
 	}
