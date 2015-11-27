@@ -137,7 +137,9 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 					attachments = append(attachments, field.Attachments)
 				}
 			}
-			n.Notify(body, attachments)
+
+			// 処理に時間がかかるので非同期にしている
+			go n.Notify(body, attachments)
 		}
 	}
 
