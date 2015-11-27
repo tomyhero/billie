@@ -8,9 +8,8 @@ import (
 )
 
 const defaultTemplates = `{{range $x , $values := .fields}}
-{{$values.name }} : {{join $values.value ","}}{{end}}
-{{range $x , $attachments := .attachment_fields}}
-{{$attachments.name }}:{{ attachmentJoin $attachments.value }}{{end}}
+{{$values.name }} : {{ if eq $values.type 1 }}{{join $values.value ","}}{{ else }}{{ attachmentJoin $values.value }}{{ end }}
+{{end}}
 `
 
 var fns = template.FuncMap{
@@ -28,7 +27,7 @@ var fns = template.FuncMap{
 type Text struct {
 }
 
-func (self *Text) Parse(fields []map[string]interface{}, attachmentFields []map[string]interface{}) string {
+func (self *Text) Parse(fields []map[string]interface{}) string {
 
 	t, err := template.New("TextTemplate").Funcs(fns).Parse(defaultTemplates)
 	if err != nil {
@@ -36,7 +35,7 @@ func (self *Text) Parse(fields []map[string]interface{}, attachmentFields []map[
 	}
 
 	var buffer bytes.Buffer
-	err = t.ExecuteTemplate(&buffer, "TextTemplate", map[string]interface{}{"fields": fields, "attachment_fields": attachmentFields})
+	err = t.ExecuteTemplate(&buffer, "TextTemplate", map[string]interface{}{"fields": fields})
 	if err != nil {
 		panic(err)
 	}

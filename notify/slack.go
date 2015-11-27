@@ -25,12 +25,12 @@ type Slack struct {
 }
 
 // Notify is function to notify slack.
-func (s *Slack) Notify(body string, attachments []map[string]interface{}) {
+func (s *Slack) Notify(body string, attachments map[string][]*multipart.FileHeader) {
 	// auth
 	api := slack.New(s.Token)
 
 	for _, tmp := range attachments {
-		for _, attachment := range tmp["value"].([]*multipart.FileHeader) {
+		for _, attachment := range tmp {
 			fileURL, err := upSlack(api, attachment)
 			if err != nil {
 				log.Errorf("upload slack error: %v", err)

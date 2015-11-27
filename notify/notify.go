@@ -1,9 +1,9 @@
 package notify
 
 import (
-//"mime/multipart"
+	"mime/multipart"
 )
 
 type NotifyExecutor interface {
-	Notify(string, []map[string]interface{})
+	Notify(string, map[string][]*multipart.FileHeader)
 }

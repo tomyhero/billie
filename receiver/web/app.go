@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	log "github.com/Sirupsen/logrus"
+	. "github.com/tomyhero/billie/constants"
 	"github.com/tomyhero/billie/filter"
 	"github.com/tomyhero/billie/notify"
 	"github.com/zenazn/goji"
@@ -125,7 +126,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 			//  ok to get data!
 			f := getFilterFormat(filterFormat, config)
-			body := f.Parse(fields, attachments)
+			body := f.Parse(fields)
 
 			// notify!
 			n := createNotifyObject(notifyType, filterFormat, formConfig["title"].(string), setting)
@@ -165,15 +166,15 @@ func getFormConfig(c web.C, config map[string]interface{}) (map[string]interface
 	return formConfig, nil
 }
 
-func getAllowSettings(formConfig map[string]interface{}) (map[string]bool, map[string]bool) {
+func getAllowSettings(formConfig map[string]interface{}) ([]string, map[string]bool) {
 
 	supportedFields, hasSupportedFields := formConfig["supported_fields"].(string)
 
-	allowFields := map[string]bool{}
+	allowFields := []string{}
 	if hasSupportedFields {
 		check := strings.Split(supportedFields, ",")
 		for _, v := range check {
-			allowFields[v] = true
+			allowFields = append(allowFields, v)
 		}
 	}
 
@@ -220,11 +221,10 @@ func createNotifyObject(notifyType string, filterFormat string, title string, se
 	return n
 }
 
-func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions map[string]bool) ([]map[string]interface{}, []map[string]interface{}, error) {
+func getData(r *http.Request, allowFields []string, allowFileExtentions map[string]bool) ([]map[string]interface{}, map[string][]*multipart.FileHeader, error) {
 
 	fields := []map[string]interface{}{}
-	attachments := []map[string]interface{}{}
-	//[]*multipart.FileHeader{}
+	attachments := map[string][]*multipart.FileHeader{}
 
 	err := r.ParseMultipartForm(1024 * 1024)
 
@@ -236,6 +236,8 @@ func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions m
 		return nil, nil, err
 	}
 
+	holder := map[string]interface{}{}
+
 	if onMultipartForm {
 		for name, f := range r.MultipartForm.File {
 			tmp := []*multipart.FileHeader{}
@@ -245,25 +247,27 @@ func getData(r *http.Request, allowFields map[string]bool, allowFileExtentions m
 					tmp = append(tmp, a)
 				}
 			}
-			_, allowd := allowFields[name]
-			if allowd && len(tmp) > 0 {
-				attachments = append(attachments, map[string]interface{}{"name": name, "value": tmp})
+			if len(tmp) > 0 {
+				holder[name] = map[string]interface{}{"type": FIELD_TYPE_ATTACHMENT, "name": name, "value": tmp}
+				attachments[name] = tmp
 			}
 		}
 
 		for name, v := range r.MultipartForm.Value {
-			_, allowd := allowFields[name]
-			if allowd {
-				fields = append(fields, map[string]interface{}{"name": name, "value": v})
-			}
+			holder[name] = map[string]interface{}{"type": FIELD_TYPE_TEXT, "name": name, "value": v}
+			//fields = append(fields, map[string]interface{}{"name": name, "value": v})
 		}
 	} else {
 
 		for name, v := range r.PostForm {
-			_, allowd := allowFields[name]
-			if allowd {
-				fields = append(fields, map[string]interface{}{"name": name, "value": v})
-			}
+			holder[name] = map[string]interface{}{"type": FIELD_TYPE_TEXT, "name": name, "value": v}
+			//fields = append(fields, map[string]interface{}{"name": name, "value": v})
+		}
+	}
+
+	for _, name := range allowFields {
+		if field, has := holder[name]; has {
+			fields = append(fields, field.(map[string]interface{}))
 		}
 	}
 

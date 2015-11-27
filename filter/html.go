@@ -18,7 +18,7 @@ type HTML struct {
 }
 
 // Parse is converts the input data into html.
-func (h *HTML) Parse(f []map[string]interface{}, a []map[string]interface{}) string {
+func (h *HTML) Parse(f []map[string]interface{}) string {
 	t := defaultTemplate
 
 	if h.Template != "" {
@@ -32,7 +32,7 @@ func (h *HTML) Parse(f []map[string]interface{}, a []map[string]interface{}) str
 	}
 
 	var buffer bytes.Buffer
-	err := t.Execute(&buffer, map[string]interface{}{"fields": f, "attachment_fields": a})
+	err := t.Execute(&buffer, map[string]interface{}{"fields": f})
 	if err != nil {
 		log.Panicf("execute template error: %v", err)
 	}
@@ -68,10 +68,7 @@ const defaultTemplateStr = `
 	<body>
 		<table>
 			{{range $x, $values := .fields}}
-			<tr><th>{{$values.name }}</th><td>{{join $values.value ","}}</td></tr>
-			{{end}}
-			{{range  $x , $attachments := .attachment_fields}}
-			<tr><th>{{$attachments.name }}</th><td>{{attachmentJoin $attachments.value }}</td></tr>
+			<tr><th>{{$values.name }}</th><td>{{ if eq $values.type 1 }}{{join $values.value ","}}{{ else }}{{ attachmentJoin $values.value }}{{ end }}</td></tr>
 			{{end}}
 		</table>
 	</body>

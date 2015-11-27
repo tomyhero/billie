@@ -5,5 +5,5 @@ import (
 )
 
 type FilterExecutor interface {
-	Parse([]map[string]interface{}, []map[string]interface{}) string
+	Parse([]map[string]interface{}) string
 }
