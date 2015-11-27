@@ -5,5 +5,5 @@ import (
 )
 
 type NotifyExecutor interface {
-	Notify(string, map[string][]*multipart.FileHeader)
+	Notify(string, [][]*multipart.FileHeader)
 }

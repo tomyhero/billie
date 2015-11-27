@@ -25,7 +25,7 @@ type Slack struct {
 }
 
 // Notify is function to notify slack.
-func (s *Slack) Notify(body string, attachments map[string][]*multipart.FileHeader) {
+func (s *Slack) Notify(body string, attachments [][]*multipart.FileHeader) {
 	// auth
 	api := slack.New(s.Token)
 

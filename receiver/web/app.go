@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	log "github.com/Sirupsen/logrus"
-	. "github.com/tomyhero/billie/constants"
+	. "github.com/tomyhero/billie/core"
 	"github.com/tomyhero/billie/filter"
 	"github.com/tomyhero/billie/notify"
 	"github.com/zenazn/goji"
@@ -80,7 +80,7 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 	// getting fields and attachments data.
 
 	allowFields, allowFileExtentions := getAllowSettings(formConfig)
-	fields, attachments, err := getData(r, allowFields, allowFileExtentions)
+	fields, err := getFields(r, allowFields, allowFileExtentions)
 
 	// failt to getting data
 	if err != nil {
@@ -131,6 +131,12 @@ func handler(c web.C, w http.ResponseWriter, r *http.Request) {
 			// notify!
 			n := createNotifyObject(notifyType, filterFormat, formConfig["title"].(string), setting)
 			log.WithFields(log.Fields{"notifyType": notifyType, "body": body}).Info("Start Notify")
+			attachments := [][]*multipart.FileHeader{}
+			for _, field := range fields {
+				if field.IsAttachmentType() {
+					attachments = append(attachments, field.Attachments)
+				}
+			}
 			n.Notify(body, attachments)
 		}
 	}
@@ -221,10 +227,9 @@ func createNotifyObject(notifyType string, filterFormat string, title string, se
 	return n
 }
 
-func getData(r *http.Request, allowFields []string, allowFileExtentions map[string]bool) ([]map[string]interface{}, map[string][]*multipart.FileHeader, error) {
+func getFields(r *http.Request, allowFields []string, allowFileExtentions map[string]bool) ([]Field, error) {
 
-	fields := []map[string]interface{}{}
-	attachments := map[string][]*multipart.FileHeader{}
+	fields := []Field{}
 
 	err := r.ParseMultipartForm(1024 * 1024)
 
@@ -233,10 +238,10 @@ func getData(r *http.Request, allowFields []string, allowFileExtentions map[stri
 	if err == http.ErrNotMultipart {
 		onMultipartForm = false
 	} else if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	holder := map[string]interface{}{}
+	holder := map[string]Field{}
 
 	if onMultipartForm {
 		for name, f := range r.MultipartForm.File {
@@ -248,30 +253,27 @@ func getData(r *http.Request, allowFields []string, allowFileExtentions map[stri
 				}
 			}
 			if len(tmp) > 0 {
-				holder[name] = map[string]interface{}{"type": FIELD_TYPE_ATTACHMENT, "name": name, "value": tmp}
-				attachments[name] = tmp
+				holder[name] = Field{Name: name, FieldType: FIELD_TYPE_ATTACHMENT, Attachments: tmp}
 			}
 		}
 
 		for name, v := range r.MultipartForm.Value {
-			holder[name] = map[string]interface{}{"type": FIELD_TYPE_TEXT, "name": name, "value": v}
-			//fields = append(fields, map[string]interface{}{"name": name, "value": v})
+			holder[name] = Field{Name: name, FieldType: FIELD_TYPE_TEXT, Values: v}
 		}
 	} else {
 
 		for name, v := range r.PostForm {
-			holder[name] = map[string]interface{}{"type": FIELD_TYPE_TEXT, "name": name, "value": v}
-			//fields = append(fields, map[string]interface{}{"name": name, "value": v})
+			holder[name] = Field{Name: name, FieldType: FIELD_TYPE_TEXT, Values: v}
 		}
 	}
 
 	for _, name := range allowFields {
 		if field, has := holder[name]; has {
-			fields = append(fields, field.(map[string]interface{}))
+			fields = append(fields, field)
 		}
 	}
 
-	return fields, attachments, nil
+	return fields, nil
 }
 
 func getFilterName(config map[string]interface{}) (filterName string) {
